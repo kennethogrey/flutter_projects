@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.dark().copyWith(
           scaffoldBackgroundColor: Pallete.backgroundColor,
         ),
-        home: const LoginScreen(),
+        home: LoginScreen(),
       ),
     );
   }
