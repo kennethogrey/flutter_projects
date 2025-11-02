@@ -1,12 +1,9 @@
-import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:weather_app_api/additional_info_item.dart';
-import 'package:weather_app_api/hourly_forecast.item.dart';
-import 'package:http/http.dart' as http;
-import 'package:weather_app_api/secrets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:weather_app_api/bloc/weather_bloc.dart';
+import 'package:weather_app_api/presentation/widgets/additional_info_item.dart';
 
 class WeatherScreen extends StatefulWidget {
   const WeatherScreen({super.key});
@@ -16,33 +13,10 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
-  late Future<Map<String, dynamic>> _weather;
-  Future<Map<String, dynamic>> getCurrentWeather() async {
-    try {
-      String city = 'Mukono';
-      final res = await http.get(
-        Uri.parse(
-          'https://api.openweathermap.org/data/2.5/forecast?q=$city&APPID=$apiKey',
-        ),
-      );
-      final data = jsonDecode(res.body);
-
-      if (data['cod'] != '200') {
-        throw 'An Unexpected error occured.';
-      }
-
-      return data;
-
-      // data['list'][0]['main']['temp'];
-    } catch (e) {
-      throw e.toString();
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    _weather = getCurrentWeather();
+    context.read<WeatherBloc>().add(WeatherFetched());
   }
 
   @override
@@ -57,33 +31,28 @@ class _WeatherScreenState extends State<WeatherScreen> {
         actions: [
           IconButton(
             onPressed: () {
-              setState(() {
-                _weather = getCurrentWeather();
-              });
+              context.read<WeatherBloc>().add(WeatherFetched());
             },
             icon: Icon(Icons.refresh),
           ),
         ],
       ),
-      body: FutureBuilder(
-        future: _weather,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: BlocBuilder<WeatherBloc, WeatherState>(
+        builder: (context, state) {
+          if (state is WeatherFailure) {
+            return Center(child: Text(state.error));
+          }
+
+          if (state is! WeatherSuccess) {
             return Center(child: CircularProgressIndicator.adaptive());
           }
 
-          if (snapshot.hasError) {
-            return Center(child: Text(snapshot.hasError.toString()));
-          }
-
-          final data = snapshot.data!;
-          final currentWeatherData = data['list'][0];
-          final currentTemp = (currentWeatherData['main']['temp'] - 273.15)
-              .toStringAsFixed(2);
-          final currentSky = currentWeatherData['weather'][0]['main'];
-          final currentPressure = currentWeatherData['main']['pressure'];
-          final currentHumidity = currentWeatherData['main']['humidity'];
-          final currentWindSpeed = currentWeatherData['wind']['speed'];
+          final data = state.weatherModel;
+          final currentTemp = (data.currentTemp - 273.15).toStringAsFixed(2);
+          final currentSky = data.currentSky;
+          final currentPressure = data.currentPressure;
+          final currentHumidity = data.currentHumidity;
+          final currentWindSpeed = data.currentWindSpeed;
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -125,7 +94,7 @@ class _WeatherScreenState extends State<WeatherScreen> {
                                     ),
                                     SizedBox(height: 16),
                                     Text(
-                                      currentSky!,
+                                      currentSky,
                                       style: TextStyle(fontSize: 20),
                                     ),
                                   ],
@@ -144,26 +113,26 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 5),
-                SizedBox(
-                  height: 120,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: 5,
-                    itemBuilder: (context, index) {
-                      final hourlyForecast = data['list'][index + 1];
-                      final hourlySky =
-                          data['list'][index + 1]['weather'][0]['main'];
-                      final time = DateTime.parse(hourlyForecast['dt_txt']);
-                      return HourlyForecastItem(
-                        time: DateFormat.j().format(time),
-                        temperature: hourlyForecast['main']['temp'].toString(),
-                        icon: hourlySky == 'Clouds' || hourlySky == 'Rain'
-                            ? Icons.cloud
-                            : Icons.sunny,
-                      );
-                    },
-                  ),
-                ),
+                // SizedBox(
+                //   height: 120,
+                //   child: ListView.builder(
+                //     scrollDirection: Axis.horizontal,
+                //     itemCount: 5,
+                //     itemBuilder: (context, index) {
+                //       final hourlyForecast = data['list'][index + 1];
+                //       final hourlySky =
+                //           data['list'][index + 1]['weather'][0]['main'];
+                //       final time = DateTime.parse(hourlyForecast['dt_txt']);
+                //       return HourlyForecastItem(
+                //         time: DateFormat.j().format(time),
+                //         temperature: hourlyForecast['main']['temp'].toString(),
+                //         icon: hourlySky == 'Clouds' || hourlySky == 'Rain'
+                //             ? Icons.cloud
+                //             : Icons.sunny,
+                //       );
+                //     },
+                //   ),
+                // ),
                 SizedBox(height: 20),
                 Text(
                   'Additional Information',
