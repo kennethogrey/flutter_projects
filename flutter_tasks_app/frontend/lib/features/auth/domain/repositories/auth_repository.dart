@@ -1,0 +1,16 @@
+import 'package:fpdart/fpdart.dart';
+import 'package:frontend/core/errors/failure.dart';
+import 'package:frontend/features/auth/domain/entities/user.dart';
+
+abstract interface class AuthRepository {
+  Future<Either<Failure, User>> signUp({
+    required String name,
+    required String email,
+    required String password,
+  });
+
+  Future<Either<Failure, User>> logIn({
+    required String email,
+    required String password,
+  });
+}
